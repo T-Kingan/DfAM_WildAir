@@ -1,0 +1,150 @@
+#Author-Tom Burge
+
+#Description-Create lattice structure from points and radii csvs
+
+#User inputs:
+
+block_x = 44
+block_y = 36
+block_z = 1
+
+no_points = 2288
+
+import adsk.core, adsk.fusion, traceback, math
+
+def main():
+    ui = None
+    try:
+        app = adsk.core.Application.get()
+        ui  = app.userInterface
+        product = app.activeProduct
+        design = product
+        root = design.rootComponent;
+        title = 'Create lattice structure'
+        if not design:
+            ui.messageBox('No active Fusion design', title)
+            return
+
+        # Import point locations
+        
+        dlg = ui.createFileDialog()
+        dlg.title = 'Open points CSV File'
+        dlg.filter = 'Comma Separated Values (*.csv);;All Files (*.*)'
+        if dlg.showOpen() != adsk.core.DialogResults.DialogOK :
+            return
+        
+        filename = dlg.filename
+        f = open(filename, 'r')
+        points = []
+        line = f.readline()
+        data = []
+        while line:
+            pntStrArr = line.split(',')
+            for pntStr in pntStrArr:
+                data.append( float(pntStr))
+        
+            if len(data) >= 3 :
+                point = [data[0], data[1], data[2]] # point cloud data of sphere centres
+                points.append(point)
+            line = f.readline()
+            data.clear()            
+        f.close()        
+
+        # Import radii
+
+        dlg = ui.createFileDialog()
+        dlg.title = 'Open radii CSV File'
+        dlg.filter = 'Comma Separated Values (*.csv);;All Files (*.*)'
+        if dlg.showOpen() != adsk.core.DialogResults.DialogOK :
+            return
+        
+        filename = dlg.filename
+        f = open(filename, 'r')
+        radii = []
+        line = f.readline()
+        data = []
+        while line:
+            pntStrArr = line.split(',')
+            for pntStr in pntStrArr:
+                data.append( float(pntStr))
+        
+            if len(data) >= 1 :
+                radius = data[0] # list of radii
+                radii.append(radius)
+            line = f.readline()
+            data.clear()            
+        f.close()
+
+        # Turn off history capture - this greatly speeds up the code but we lose the parametric editing ability after its built
+        design.designType = adsk.fusion.DesignTypes.DirectDesignType 
+
+        # Extrude main structure
+        
+        newcomp = design.rootComponent.occurrences.addNewComponent(adsk.core.Matrix3D.create())
+        comp0 = newcomp.component
+
+        sketches = comp0.sketches
+        features = comp0.features
+        extrudes = comp0.features.extrudeFeatures
+        revolves = comp0.features.revolveFeatures
+        xyPlane = comp0.xYConstructionPlane
+        xzPlane = comp0.xZConstructionPlane
+        yzPlane = comp0.yZConstructionPlane
+
+        sketch = sketches.add(xyPlane)
+        lines = sketch.sketchCurves.sketchLines
+        point0 = adsk.core.Point3D.create(0,0,0)
+        point1 = adsk.core.Point3D.create(block_x,0,0)
+        point2 = adsk.core.Point3D.create(block_x,block_y,0)
+        point3 = adsk.core.Point3D.create(0,block_y,0)
+        lines.addByTwoPoints(point0, point1)
+        lines.addByTwoPoints(point1, point2)
+        lines.addByTwoPoints(point2, point3)
+        lines.addByTwoPoints(point3, point0)
+        profile = sketch.profiles.item(0)
+
+        distance = adsk.core.ValueInput.createByReal(block_z)
+        isFullLength = True
+        extrudeInput = extrudes.createInput(profile, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        extrudeInput.setSymmetricExtent(distance, isFullLength)
+        extrude = extrudes.add(extrudeInput)
+
+        body1 = comp0.bRepBodies.itemByName('Body1')
+        
+        # Sphere loop
+        no = 0
+        for x in radii[0:no_points]: # If you want to run the code without a limit on the number of points (if you have a good computer) remove the [0:no_points]
+
+            # Extrude sphere
+            sketch = root.sketches.add(root.xYConstructionPlane)
+            circles = sketch.sketchCurves.sketchCircles
+            circle = circles.addByCenterRadius(adsk.core.Point3D.create((points[no])[0],(points[no])[1],(points[no])[2]), radii[no])
+
+            lines = sketch.sketchCurves.sketchLines
+            axisLine = lines.addByTwoPoints(adsk.core.Point3D.create(30 + (points[no])[0],(points[no])[1],(points[no])[2]), adsk.core.Point3D.create(-30 + (points[no])[0],(points[no])[1],(points[no])[2]))
+
+            profile = sketch.profiles.item(0)
+            revInput = revolves.createInput(profile, axisLine, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+            angle = adsk.core.ValueInput.createByReal(2*math.pi)
+            revInput.setAngleExtent(False, angle)
+            ext = revolves.add(revInput)
+
+            body2 = comp0.bRepBodies.itemByName('Body'+str(no+2))
+
+            # Subtract sphere
+            TargetBody = body1
+            ToolBodies = adsk.core.ObjectCollection.create()
+            ToolBodies.add(body2)
+         
+            CombineCutInput = root.features.combineFeatures.createInput(TargetBody, ToolBodies)
+            CombineCutFeats = features.combineFeatures
+            CombineCutInput = CombineCutFeats.createInput(TargetBody, ToolBodies)
+            CombineCutInput.operation = adsk.fusion.FeatureOperations.CutFeatureOperation
+            CombineCutFeats.add(CombineCutInput)
+            
+            no = no+1
+        
+    except:
+        if ui:
+            ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+main()
