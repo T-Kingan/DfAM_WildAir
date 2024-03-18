@@ -101,7 +101,18 @@ for index in sorted_indices:
         if not check_overlap(new_circle, circles):
             circles.append(new_circle)
 
-print(circles)
+for circle in circles:
+    circle['z'] = 6
+
+#print("circles: ", circles)
+
+# copy circles to circle_centres
+circle_centres = circles.copy()
+for centre in circle_centres:
+    centre['z'] = centre['z'] - centre['radius']
+
+print("circle centres : ", circle_centres)
+
 
 # export the circles to a CSV file
 circles_df = pd.DataFrame(circles)
@@ -122,66 +133,66 @@ plt.ylabel('Y coordinate (mm)')
 plt.show()
 
 
-# # Create a z array filled with the value 6, of the same shape as X_fine
-# Z = np.full_like(X_fine, 6)
+# Create a z array filled with the value 6, of the same shape as X_fine
+Z = np.full_like(X_fine, 6)
 
-# # Combine X_fine, Y_fine, and Z into a single array of 3D points
-# top_plane = np.stack((X_fine, Y_fine, Z), axis=-1)
-# # separate top_plane into x, y, and z arrays
+# Combine X_fine, Y_fine, and Z into a single array of 3D points
+top_plane = np.stack((X_fine, Y_fine, Z), axis=-1)
+# separate top_plane into x, y, and z arrays
 
-# # top_surface = top_plane Z - (radii of circles*scale factor)
-# scale_factor = 0.1
-# #top_surface = top_plane[..., 2] - (np.array([circle['radius'] for circle in circles]) * scale_factor)
-# #cutting_surface = top_surface - np.array([circle['radius'] for circle in circles])
+# top_surface = top_plane Z - (radii of circles*scale factor)
+scale_factor = 0.1
+#top_surface = top_plane[..., 2] - (np.array([circle['radius'] for circle in circles]) * scale_factor)
+#cutting_surface = top_surface - np.array([circle['radius'] for circle in circles])
 
 
-# x_tp, y_tp, z_tp = top_plane[..., 0], top_plane[..., 1], top_plane[..., 2]
+x_tp, y_tp, z_tp = top_plane[..., 0], top_plane[..., 1], top_plane[..., 2]
 
-# # Combine X_fine, Y_fine, and Z into a single array of 3D points
-# top_plane = np.stack((X_fine, Y_fine, Z), axis=-1)
+# Combine X_fine, Y_fine, and Z into a single array of 3D points
+top_plane = np.stack((X_fine, Y_fine, Z), axis=-1)
 
-# # Initialize the cutting_surface as a copy of Z to keep the original Z values
-# cutting_surface = np.copy(Z)
+# Initialize the cutting_surface as a copy of Z to keep the original Z values
+cutting_surface = np.copy(Z)
 
-# # Iterate over each circle to adjust the Z values of the grid based on the circle's influence
-# for circle in circles:
-#     # Create a grid of points (x, y) for the distance calculation
-#     grid_points = np.column_stack((X_fine.ravel(), Y_fine.ravel()))
+# Iterate over each circle to adjust the Z values of the grid based on the circle's influence
+for circle in circles:
+    # Create a grid of points (x, y) for the distance calculation
+    grid_points = np.column_stack((X_fine.ravel(), Y_fine.ravel()))
     
-#     # Circle center and radius
-#     circle_center = np.array([[circle['x'], circle['y']]])
-#     radius = circle['radius']
+    # Circle center and radius
+    circle_center = np.array([[circle['x'], circle['y']]])
+    radius = circle['radius']
     
-#     # Calculate distances from each point in the grid to the circle center
-#     distances = cdist(grid_points, circle_center).flatten()
+    # Calculate distances from each point in the grid to the circle center
+    distances = cdist(grid_points, circle_center).flatten()
     
-#     # Determine which points are within the circle's radius
-#     within_circle = distances < radius
+    # Determine which points are within the circle's radius
+    within_circle = distances < radius
     
-#     # Adjust Z values for points within the circle's radius
-#     # This simplistic approach subtracts a fraction of the radius from the Z value
-#     # You may need a more sophisticated formula based on your specific requirements
-#     adjustment = np.zeros_like(Z.ravel())
-#     adjustment[within_circle] = radius
-#     cutting_surface = cutting_surface - adjustment.reshape(Z.shape)
+    # Adjust Z values for points within the circle's radius
+    # This simplistic approach subtracts a fraction of the radius from the Z value
+    # You may need a more sophisticated formula based on your specific requirements
+    adjustment = np.zeros_like(Z.ravel())
+    adjustment[within_circle] = radius
+    cutting_surface = cutting_surface - adjustment.reshape(Z.shape)
 
-# # Now, cutting_surface contains the adjusted Z values
-
-
-# # visualise the cutting surface
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection='3d')
-# ax.plot_surface(x_tp, y_tp, cutting_surface, cmap='viridis')
-# ax.set_title('Cutting Surface')
-# ax.set_xlabel('X coordinate (mm)')
-# ax.set_ylabel('Y coordinate (mm)')
-# ax.set_zlabel('Z coordinate (mm)')
-# # Make axes equal in length
-# ax.set_box_aspect([np.ptp(arr) for arr in [x_tp, y_tp, cutting_surface]])
-# plt.show()
+# Now, cutting_surface contains the adjusted Z values
 
 
-# # --- note ---
-# # option 1) Use the circle centres to create a surface
-# # option 2) 
+# visualise the cutting surface
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.plot_surface(x_tp, y_tp, cutting_surface, cmap='viridis')
+ax.set_title('Cutting Surface')
+ax.set_xlabel('X coordinate (mm)')
+ax.set_ylabel('Y coordinate (mm)')
+ax.set_zlabel('Z coordinate (mm)')
+# Make axes equal in length
+ax.set_box_aspect([np.ptp(arr) for arr in [x_tp, y_tp, cutting_surface]])
+plt.show()
+
+
+# --- note ---
+# option 1) Use the circle centres to create a surface
+# option 2) 
 

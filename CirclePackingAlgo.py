@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator
 from matplotlib.patches import Circle
 
+
+
 # Load the pressure data from CSV file
 file_path = 'TK_footpressure.csv'
 foot_pressure = pd.read_csv(file_path).values
