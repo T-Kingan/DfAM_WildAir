@@ -1,3 +1,7 @@
+
+
+# --- Fusion side ---
+
 import adsk.core, adsk.fusion, adsk.cam, traceback
 import numpy as np
 from circles_from_pressureMap import calculate_circle_centers, load_and_process_data

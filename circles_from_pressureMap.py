@@ -52,3 +52,7 @@ if __name__ == '__main__':
     foot_pressure = load_and_process_data(file_path)
     circles = calculate_circle_centers(foot_pressure)
     print("Circle centers:", circles)
+    # out circles to csv
+    df = pd.DataFrame(circles)
+    df.to_csv('circle_centers.csv', index=False)
+    print("Circle centers saved to circle_centers.csv")
