@@ -1,11 +1,5 @@
-
-
-# --- Fusion side ---
-
 import adsk.core, adsk.fusion, adsk.cam, traceback
-import numpy as np
-from circles_from_pressureMap import calculate_circle_centers, load_and_process_data
-
+import csv
 
 def run(context):
     ui = None
@@ -16,44 +10,27 @@ def run(context):
         ui.messageBox('Script execution has started. Please wait...')
 
         design = app.activeProduct
-
-
-        # Generate a data structure of random numbers for hemisphere radii
-        rand_radii = np.random.rand(2, 2, 2) * 2  # Example random radii, scaled
-
-        # Define the spacing between points
-        spacing = 8.382
-
-        # Create a coordinate grid for the data
-        x = np.arange(0, 2 * spacing, spacing)
-        y = np.arange(0, 2 * spacing, spacing)
-        z = np.arange(0, 2 * spacing, spacing)
-        X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-
         # Access the root component of the design
         rootComp = design.rootComponent
 
-        file_path = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\TK_footpressure.csv"
-        foot_pressure = load_and_process_data(file_path)
-        circle_centers = calculate_circle_centers(foot_pressure)
+        # Path to your CSV file
+        #r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\circle_centers.csv"
+        file_path = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\circle_centers.csv"
 
-        print(circle_centers)
 
-        # # Create a hemisphere at each point in circle_centers
+        # Read circle centers from the CSV file
+        circle_centers = []
+        with open(file_path, mode='r', newline='') as csvfile:
+            csvreader = csv.reader(csvfile)
+            next(csvreader, None)  # Skip the header row if there is one
+            for row in csvreader:
+                # Assuming the CSV columns are x, y, z, radius in order
+                circle = {'x': float(row[0]), 'y': float(row[1]), 'radius': float(row[2]), 'z': float(row[3]), }
+                circle_centers.append(circle)
+        print("Circle centers:", circle_centers)
+        # Create a hemisphere at each point in circle_centers
         for circle in circle_centers:
             createHemisphere(rootComp, circle['x'], circle['y'], circle['z'], circle['radius'])
-
-
-
-
-        # # Loop through each point in the meshgrid
-        # for i in range(X.shape[0]):
-        #     for j in range(X.shape[1]):
-        #         for k in range(X.shape[2]):
-        #             # Hemisphere radius for the current point
-        #             radius = rand_radii[i, j, k]
-        #             # Create a hemisphere at the position with the random radius
-        #             createHemisphere(rootComp, X[i, j, k], Y[i, j, k], Z[i, j, k], radius)
 
         # At the end of the `run` function to indicate completion
         ui.messageBox('Script execution completed successfully!')
@@ -98,12 +75,3 @@ def stop(context):
     except:
         if ui:
             ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
-
-# if __name__ == "__main__":
-#     #ui.messageBox('Script execution has started from main. Please wait...')
-#     run(adsk.fusion.Design.cast(adsk.core.Application.get().activeProduct))
-
-# CAD Steps
-    # sketch circle
-    # draw centre line
-    # revolve half the circle 180 degrees
