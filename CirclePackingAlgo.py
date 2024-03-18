@@ -1,3 +1,10 @@
+'''
+Takes in the foot pressure data as a preformated csv
+- Plots various pressure maps
+- Final output is a map of circles
+
+'''
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
