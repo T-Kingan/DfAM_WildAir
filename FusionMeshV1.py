@@ -1,5 +1,5 @@
-import numpy as np
 import adsk.core, adsk.fusion, adsk.cam, traceback
+import numpy as np
 
 def run(context):
     ui = None
@@ -9,32 +9,26 @@ def run(context):
         design = app.activeProduct
 
         # Generate a data structure of 10 x 10 x 10 of random numbers for sphere radii
-        rand_radii = np.random.rand(10, 10, 10)
+        rand_radii = np.random.rand(2, 2, 2) * 2  # Example random radii, scaled
 
         # Define the spacing between points
         spacing = 8.382
 
         # Create a coordinate grid for the data
-        x = np.arange(0, 10 * spacing, spacing)
-        y = np.arange(0, 10 * spacing, spacing)
-        z = np.arange(0, 10 * spacing, spacing)
-        X, Y, Z = np.meshgrid(x, y, z)
+        x = np.arange(0, 2 * spacing, spacing)
+        y = np.arange(0, 2 * spacing, spacing)
+        z = np.arange(0, 2 * spacing, spacing)
+        X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
 
         # Access the root component of the design
         rootComp = design.rootComponent
-        # Get the 3D sketch features
-        sketches = rootComp.sketches
-        # Create a new sketch on the xy plane
-        xyPlane = rootComp.xYConstructionPlane
-        sketch = sketches.add(xyPlane)
 
         # Loop through each point in the meshgrid
         for i in range(X.shape[0]):
-            for j in range(Y.shape[1]):
-                for k in range(Z.shape[2]):
-                    # Sphere radius for the current point, scaled for visibility
-                    radius = rand_radii[i, j, k] * 10  # Scale factor for radius
-                    
+            for j in range(X.shape[1]):
+                for k in range(X.shape[2]):
+                    # Sphere radius for the current point
+                    radius = rand_radii[i, j, k]
                     # Create a sphere at the position with the random radius
                     createSphere(rootComp, X[i, j, k], Y[i, j, k], Z[i, j, k], radius)
 
@@ -43,18 +37,28 @@ def run(context):
             ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 def createSphere(rootComp, x, y, z, radius):
-    # Create a temporary occurrence for a new component
-    tempOcc = rootComp.occurrences.addNewComponent(adsk.core.Matrix3D.create())
-    tempComp = tempOcc.component
+    # Access the features collection of the root component
+    features = rootComp.features
 
-    # Create a sphere
-    spheres = tempComp.features.sphereFeatures
-    sphereInput = spheres.createInput(tempComp.xYConstructionPlane, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-    sphereInput.setByCenterRadius(adsk.core.Point3D.create(x, y, z), radius)
-    sphere = spheres.add(sphereInput)
+    # Create a new sketch on the xy plane for the circle
+    sketches = rootComp.sketches
+    xyPlane = rootComp.xYConstructionPlane
+    sketch = sketches.add(xyPlane)
 
-    # Optionally, delete the temp occurrence if not needed
-    # rootComp.occurrences.item(rootComp.occurrences.count - 1).deleteMe()
+    # Draw a circle in the sketch
+    circles = sketch.sketchCurves.sketchCircles
+    centerPoint = adsk.core.Point3D.create(x, y, z)
+    circle = circles.addByCenterRadius(centerPoint, radius)
+
+    # Extrude the circle to create a sphere
+    prof = sketch.profiles.item(0)
+    extrudes = features.extrudeFeatures
+    extrudeInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+    distance = adsk.core.ValueInput.createByReal(radius * 2)  # Extrude distance
+    extrudeInput.setDistanceExtent(False, distance)
+    extrudeInput.isSolid = True
+    extrudes.add(extrudeInput)
 
 if __name__ == "__main__":
     run(adsk.fusion.Design.cast(adsk.core.Application.get().activeProduct))
+    
