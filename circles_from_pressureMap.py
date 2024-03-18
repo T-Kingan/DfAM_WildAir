@@ -54,9 +54,17 @@ if __name__ == '__main__':
     print("Circle centers:", circles)
     # out circles to csv
     df = pd.DataFrame(circles)
+
+    # divide radius by 10 to convert from mm to cm
+    #df['radius'] = df['radius'] / 10
+
     # round all to 2 decimal places
     df = df.round(2)
-    # divide radius by 10 to convert from mm to cm
-    df['radius'] = df['radius'] / 10
-    df.to_csv('circle_centers.csv', index=False)
+
+    # print the df
+    print(df)
+
+
+    # save to csv without header
+    df.to_csv('circle_centers.csv', index=False, header=False)
     print("Circle centers saved to circle_centers.csv")

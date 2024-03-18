@@ -10,6 +10,9 @@ def run(context):
         ui.messageBox('Script execution has started. Please wait...')
 
         design = app.activeProduct
+
+        # Turn off history capture - this greatly speeds up the code but we lose the parametric editing ability after its built
+        design.designType = adsk.fusion.DesignTypes.DirectDesignType 
         # Access the root component of the design
         rootComp = design.rootComponent
 
@@ -25,6 +28,7 @@ def run(context):
             next(csvreader, None)  # Skip the header row if there is one
             for row in csvreader:
                 # Assuming the CSV columns are x, y, z, radius in order
+                # exclude the first row of the csv
                 circle = {'x': float(row[0]), 'y': float(row[1]), 'radius': float(row[2]), 'z': float(row[3]), }
                 circle_centers.append(circle)
         print("Circle centers:", circle_centers)
@@ -61,7 +65,7 @@ def createHemisphere(rootComp, x, y, z, radius):
     prof = sketch.profiles.item(0)
     revolves = features.revolveFeatures
     revolveInput = revolves.createInput(prof, axis, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-    angle = adsk.core.ValueInput.createByString("180 deg")  # Revolve angle
+    angle = adsk.core.ValueInput.createByString("360 deg")  # Revolve angle
     revolveInput.setAngleExtent(False, angle)
     revolveInput.isSolid = True
     revolves.add(revolveInput)
