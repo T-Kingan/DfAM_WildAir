@@ -1,108 +1,87 @@
-# cutting_lattice.py
-'''
-This script reads the circle centers from a CSV file,
-
-'''
 import pandas as pd
-from scipy.spatial import Delaunay, ConvexHull
+from scipy.spatial import ConvexHull, Delaunay
 import matplotlib.pyplot as plt
 import numpy as np
 
+def read_circle_centers(file_path):
+    """Read circle centers from a CSV file into a pandas DataFrame."""
+    df = pd.read_csv(file_path)
+    df = df.astype({'x': float, 'y': float, 'z': float, 'radius': float})
+    return df[['x', 'y']].values
 
-# Path to the CSV file
-file_path = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\circle_centers.csv"
+def plot_delaunay_triangulation(points, title='Delaunay Triangulation'):
+    """Plot the Delaunay triangulation of a set of points."""
+    tri = Delaunay(points)
+    plt.figure(figsize=(10, 10))
+    plt.triplot(points[:, 0], points[:, 1], tri.simplices)
+    plt.plot(points[:, 0], points[:, 1], 'o')
+    plt.title(title)
+    plt.show()
 
-# Function to inflate convex hull vertices
-def inflate_convexhull(hull, points, inf=1.5):
-    centroid = np.mean(points[hull.vertices], axis=0)
-    inflated_vertices = []
-    for vertex in points[hull.vertices]:
-        direction = vertex - centroid
-        inflated_vertex = centroid + direction * inf
-        inflated_vertices.append(inflated_vertex)
-    return np.array(inflated_vertices)
+def plot_convex_hull(points, title='Convex Hull'):
+    """Plot the convex hull of a set of points."""
+    hull = ConvexHull(points)
+    plt.figure(figsize=(10, 10))
+    for simplex in hull.simplices:
+        plt.plot(points[simplex, 0], points[simplex, 1], 'k-')
+    plt.plot(points[:, 0], points[:, 1], 'o')
+    plt.title(title)
+    plt.show()
 
-# Read circle centers from the CSV file into a pandas DataFrame
-df = pd.read_csv(file_path)
+def inflate_convexhull(hull, points, inflation_distance=-1.5):
+    """Inflate the convex hull by moving its vertices along the normals by a fixed distance."""
+    inflated_vertices = np.zeros_like(points[hull.vertices])
+    normals = np.zeros_like(inflated_vertices)
 
-# Ensure correct data types
-df = df.astype({'x': float, 'y': float, 'z': float, 'radius': float})
+    # Calculate normals for each edge and normalize
+    for i in range(len(hull.vertices)):
+        next_index = (i + 1) % len(hull.vertices)
+        edge_vector = points[hull.vertices[next_index]] - points[hull.vertices[i]]
+        normal = np.array([-edge_vector[1], edge_vector[0]])  # Perpendicular to the edge
+        normal = normal / np.linalg.norm(normal)  # Normalize the normal vector
+        normals[i] = normal
 
-# Extract XY coordinates
-points = df[['x', 'y']].values
+    # Calculate the normal for each vertex by averaging the normals of the adjacent edges
+    for i, vertex in enumerate(hull.vertices):
+        prev_normal = normals[i-1]
+        current_normal = normals[i]
+        vertex_normal = (prev_normal + current_normal) / 2
+        vertex_normal = vertex_normal / np.linalg.norm(vertex_normal)  # Normalize the average normal
 
-# Perform Delaunay triangulation
-tri = Delaunay(points)  # Create the Delaunay triangulation
+        # Move the vertex along the normal by a fixed distance
+        inflated_vertices[i] = points[vertex] + vertex_normal * inflation_distance
 
+    return inflated_vertices
 
-# Plotting the triangulation
-plt.figure(figsize=(10, 10)) 
-plt.triplot(points[:, 0], points[:, 1], tri.simplices) 
-plt.plot(points[:, 0], points[:, 1], 'o')
-plt.show()
+def main():
+    file_path = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\circle_centers.csv"
+    points = read_circle_centers(file_path)
 
-# divide the data into 2 down the centre of x axis
-left = points[points[:, 0] < 20]   # 
-right = points[points[:, 0] > 20]
+    # Delaunay Triangulation for all points
+    plot_delaunay_triangulation(points)
 
-# Perform Delaunay triangulation
-tri_left = Delaunay(left)  # Create the Delaunay triangulation
-tri_right = Delaunay(right)  # Create the Delaunay triangulation
+    # Divide the data into left and right sets
+    left = points[points[:, 0] < 20]
+    right = points[points[:, 0] > 20]
 
-# Plotting the triangulation
-plt.figure(figsize=(10, 10))
-plt.triplot(left[:, 0], left[:, 1], tri_left.simplices)
-plt.plot(left[:, 0], left[:, 1], 'o')
-plt.show()
+    # Delaunay Triangulation for left and right sets
+    plot_delaunay_triangulation(left, 'Delaunay Triangulation - Left Side')
+    plot_delaunay_triangulation(right, 'Delaunay Triangulation - Right Side')
 
-plt.figure(figsize=(10, 10))
-plt.triplot(right[:, 0], right[:, 1], tri_right.simplices)
-plt.plot(right[:, 0], right[:, 1], 'o')
-plt.show()
+    # Convex Hull and Inflated Convex Hull for both sets
+    for side, side_points in [('Left Side', left), ('Right Side', right)]:
+        hull = ConvexHull(side_points)
+        inflated_points = inflate_convexhull(hull, side_points)
+        
+        # plot convex hull
+        plot_convex_hull(side_points, f'Convex Hull - {side}')
+        
+        # plot inflated convex hull
+        plt.figure(figsize=(10, 10))
+        plt.fill(inflated_points[:, 0], inflated_points[:, 1], 'k-', alpha=0.2, edgecolor='black')
+        plt.plot(side_points[:, 0], side_points[:, 1], 'o')
+        plt.title(f'Inflated Convex Hull - {side}')
+        plt.show()
 
-# Extract XY coordinates
-points = df[['x', 'y']].values
-
-# Divide the data into 2 down the centre of the x-axis
-left = points[points[:, 0] < 20]
-right = points[points[:, 0] > 20]
-
-# Find the convex hull for the left set
-hull_left = ConvexHull(left)
-inflated_left = inflate_convexhull(hull_left, left)
-
-# Find the convex hull for the right set
-hull_right = ConvexHull(right)
-inflated_right = inflate_convexhull(hull_right, right)
-
-# Plotting the convex hull for the left set
-plt.figure(figsize=(10, 10))
-for simplex in hull_left.simplices:
-    plt.plot(left[simplex, 0], left[simplex, 1], 'k-')  # 'k-' is for black line
-plt.plot(left[:, 0], left[:, 1], 'o')
-plt.title('Convex Hull - Left Side')
-plt.show()
-
-# Plotting the convex hull for the right set
-plt.figure(figsize=(10, 10))
-for simplex in hull_right.simplices:
-    plt.plot(right[simplex, 0], right[simplex, 1], 'k-')  # 'k-' is for black line
-plt.plot(right[:, 0], right[:, 1], 'o')
-plt.title('Convex Hull - Right Side')
-plt.show()
-
-# Plotting the inflated convex hull for the left set
-plt.figure(figsize=(10, 10))
-for i, simplex in enumerate(hull_left.simplices):
-    plt.plot(inflated_left[[i, (i+1) % len(inflated_left)], 0], inflated_left[[i, (i+1) % len(inflated_left)], 1], 'k-')
-plt.plot(left[:, 0], left[:, 1], 'o')
-plt.title('Inflated Convex Hull - Left Side')
-plt.show()
-
-# Plotting the inflated convex hull for the right set
-plt.figure(figsize=(10, 10))
-for i, simplex in enumerate(hull_right.simplices):
-    plt.plot(inflated_right[[i, (i+1) % len(inflated_right)], 0], inflated_right[[i, (i+1) % len(inflated_right)], 1], 'k-')
-plt.plot(right[:, 0], right[:, 1], 'o')
-plt.title('Inflated Convex Hull - Right Side')
-plt.show()
+if __name__ == '__main__':
+    main()
