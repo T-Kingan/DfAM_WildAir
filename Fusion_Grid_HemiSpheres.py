@@ -1,3 +1,9 @@
+# Fusion_Grid_HemiSpheres.py
+'''
+This script reads the circle centers from a CSV file,
+Creates spheres at each circle center in Fusion 360.
+
+'''
 import adsk.core, adsk.fusion, adsk.cam, traceback
 import csv
 

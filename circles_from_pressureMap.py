@@ -1,4 +1,9 @@
 # circles_from_pressureMap.py
+'''
+This script read the foot pressure data from a CSV file, 
+Generates cricles based on the pressure data,
+The circle centers are saved to a CSV file.
+'''
 import numpy as np
 import pandas as pd
 from scipy.interpolate import RegularGridInterpolator
@@ -52,11 +57,24 @@ if __name__ == '__main__':
     foot_pressure = load_and_process_data(file_path)
     circles = calculate_circle_centers(foot_pressure)
     print("Circle centers:", circles)
+
+    # # plot the circles
+    # import matplotlib.pyplot as plt
+    # fig, ax = plt.subplots()
+    # for circle in circles:
+    #     ax.add_patch(plt.Circle((circle['x'], circle['y']), circle['radius'], color='r', fill=False))
+    # ax.set_xlim(0, 450)
+    # ax.set_ylim(0, 450)
+    # plt.gca().set_aspect('equal', adjustable='box')
+    # plt.show()
+
+
+
     # out circles to csv
     df = pd.DataFrame(circles)
 
-    # divide radius by 10 to convert from mm to cm
-    #df['radius'] = df['radius'] / 10
+    # divide all values by 10 to convert to cm
+    df = df / 10
 
     # round all to 2 decimal places
     df = df.round(2)
@@ -65,6 +83,6 @@ if __name__ == '__main__':
     print(df)
 
 
-    # save to csv without header
-    df.to_csv('circle_centers.csv', index=False, header=False)
+    # save to csv
+    df.to_csv("circle_centers.csv", index=False)
     print("Circle centers saved to circle_centers.csv")
