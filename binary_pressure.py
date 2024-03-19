@@ -99,72 +99,62 @@ plt.show()
 # `normalized_fp_2d` is the 2D array of pressure values normalized between 0 and 1
 normalized_fp_2d = (fine_fp_2d - np.min(fine_fp_2d)) / (np.max(fine_fp_2d) - np.min(fine_fp_2d))
 
-# Assume `x_fine` and `y_fine` are the fine grid coordinates as before
+# Define the pressure threshold for binary image
+pressure_threshold = 0.5  # Replace with your chosen threshold
 
-# Function to check if a new circle overlaps with any existing circle
-def check_overlap(new_circle, circles):
-    for circle in circles:
-        distance = np.hypot(circle['x'] - new_circle['x'], circle['y'] - new_circle['y'])
-        if distance < (circle['radius'] + new_circle['radius']):
-            return True
-    return False
+# Create binary image based on threshold
+binary_image = np.where(fine_fp_2d >= pressure_threshold, 1, 0)
 
-# Initialize list to keep track of circles
-circles = []
-
-# Define minimum and maximum circle sizes
-min_circle_size = 3  # replace with your chosen minimum
-max_circle_size = 15 #spacing / 2  # the chosen maximum, as before
-extra_circle_size = 1.5 
-
-# Iterate over the pressure values, starting with the highest pressure
-sorted_indices = np.dstack(np.unravel_index(np.argsort(-normalized_fp_2d.ravel()), normalized_fp_2d.shape))[0]
-
-# Iterate over the pressure values, starting with the highest pressure
-for index in sorted_indices:
-    i, j = index
-    pressure = normalized_fp_2d[i, j]
-    if pressure > 0:  # Ignore zero pressure values
-        # Map pressure to the new circle size range
-        radius = min_circle_size + (pressure * (max_circle_size - min_circle_size))
-        new_circle = {'x': x_fine[j], 'y': y_fine[i], 'radius': radius}
-        
-        # Check if the new circle overlaps with any existing circle
-        if not check_overlap(new_circle, circles):
-            circles.append(new_circle)
-
-print(circles)
-
-# export the circles to a CSV file
-circles_df = pd.DataFrame(circles)
-circles_df.to_csv('circles.csv', index=False)
-
-# Plot the circles
-fig, ax = plt.subplots(figsize=(10, 15))
-for circle in circles:
-    ax.add_patch(Circle((circle['x'], circle['y']), circle['radius'], fill=False))
-
-# Adjust the plot limits and aspect ratio
-ax.set_xlim([0, np.max(x_fine)])
-ax.set_ylim([0, np.max(y_fine)])
-ax.set_aspect('equal')
-plt.title('Packed Circles According to Pressure Data')
+# Plot the binary image
+plt.figure(figsize=(10, 15))
+plt.imshow(binary_image, cmap='gray', origin='lower')
+plt.colorbar(label='Pressure (binary)')
+plt.title('Binary Pressure Map')
 plt.xlabel('X coordinate (mm)')
 plt.ylabel('Y coordinate (mm)')
 plt.show()
 
-# # After the initial circles are placed according to the pressure data
-# # We make another pass to fill in the gaps with smaller circles
-# # Corrected logic for adding extra small circles
-# for i, y in enumerate(y_fine):
-#     for j, x in enumerate(x_fine):
-#         potential_circle = {'x': x, 'y': y, 'radius': extra_circle_size}
-        
-#         # Use the corrected check_overlap function call
-#         if not check_overlap(potential_circle, circles):
-#             circles.append(potential_circle)
+# # Assume `x_fine` and `y_fine` are the fine grid coordinates as before
 
-# # Plot all the circles
+# # Function to check if a new circle overlaps with any existing circle
+# def check_overlap(new_circle, circles):
+#     for circle in circles:
+#         distance = np.hypot(circle['x'] - new_circle['x'], circle['y'] - new_circle['y'])
+#         if distance < (circle['radius'] + new_circle['radius']):
+#             return True
+#     return False
+
+# # Initialize list to keep track of circles
+# circles = []
+
+# # Define minimum and maximum circle sizes
+# min_circle_size = 3  # replace with your chosen minimum
+# max_circle_size = 15 #spacing / 2  # the chosen maximum, as before
+# extra_circle_size = 1.5 
+
+# # Iterate over the pressure values, starting with the highest pressure
+# sorted_indices = np.dstack(np.unravel_index(np.argsort(-normalized_fp_2d.ravel()), normalized_fp_2d.shape))[0]
+
+# # Iterate over the pressure values, starting with the highest pressure
+# for index in sorted_indices:
+#     i, j = index
+#     pressure = normalized_fp_2d[i, j]
+#     if pressure > 0:  # Ignore zero pressure values
+#         # Map pressure to the new circle size range
+#         radius = min_circle_size + (pressure * (max_circle_size - min_circle_size))
+#         new_circle = {'x': x_fine[j], 'y': y_fine[i], 'radius': radius}
+        
+#         # Check if the new circle overlaps with any existing circle
+#         if not check_overlap(new_circle, circles):
+#             circles.append(new_circle)
+
+# print(circles)
+
+# # export the circles to a CSV file
+# circles_df = pd.DataFrame(circles)
+# circles_df.to_csv('circles.csv', index=False)
+
+# # Plot the circles
 # fig, ax = plt.subplots(figsize=(10, 15))
 # for circle in circles:
 #     ax.add_patch(Circle((circle['x'], circle['y']), circle['radius'], fill=False))
@@ -173,24 +163,7 @@ plt.show()
 # ax.set_xlim([0, np.max(x_fine)])
 # ax.set_ylim([0, np.max(y_fine)])
 # ax.set_aspect('equal')
-# plt.title('Packed Circles According to Pressure Data with Extra Small Circles')
+# plt.title('Packed Circles According to Pressure Data')
 # plt.xlabel('X coordinate (mm)')
 # plt.ylabel('Y coordinate (mm)')
 # plt.show()
-
-# --- 3D Grid Points ---
-
-# X_fine and Y_fine are already defined from your code
-
-# Create a z array filled with the value 6, of the same shape as X_fine
-# Z = np.full_like(X_fine, 6)
-
-# Combine X_fine, Y_fine, and Z into a single array of 3D points
-# top_plane = np.stack((X_fine, Y_fine, Z), axis=-1)
-
-# top_surface = top_plane Z - (radii of circles*scale factor)
-# scale_factor = 0.1
-# top_surface = top_plane[..., 2] - (np.array([circle['radius'] for circle in circles]) * scale_factor)
-# cutting_surface = top_surface - np.array([circle['radius'] for circle in circles])
-
-# TO DO^ CHECK THE ABOVE CODE
