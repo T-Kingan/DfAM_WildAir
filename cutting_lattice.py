@@ -83,5 +83,11 @@ def main():
         plt.title(f'Inflated Convex Hull - {side}')
         plt.show()
 
+        # add the inflated points to the original points
+        inflated_points = np.concatenate((side_points, inflated_points), axis=0)
+
+        # Perform Delaunay Triangulation on the inflated points
+        plot_delaunay_triangulation(inflated_points, f'Delaunay Triangulation - Inflated {side}')
+
 if __name__ == '__main__':
     main()

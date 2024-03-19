@@ -105,6 +105,21 @@ pressure_threshold = 0.5  # Replace with your chosen threshold
 # Create binary image based on threshold
 binary_image = np.where(fine_fp_2d >= pressure_threshold, 1, 0)
 
+# divide the binary image in 2 along the x axis
+binary_image_left = binary_image[:, :binary_image.shape[1]//2]
+binary_image_right = binary_image[:, binary_image.shape[1]//2:]
+
+# perform a closing operation on the binary images
+# closing is a dilation followed by an erosion
+# this is to remove any small holes in the binary image
+# that are not part of the foot
+from scipy.ndimage import binary_closing
+binary_image_left = binary_closing(binary_image_left)
+binary_image_right = binary_closing(binary_image_right)
+
+# join the binary images back together
+binary_image = np.concatenate((binary_image_left, binary_image_right), axis=1)
+
 # Plot the binary image
 plt.figure(figsize=(10, 15))
 plt.imshow(binary_image, cmap='gray', origin='lower')
