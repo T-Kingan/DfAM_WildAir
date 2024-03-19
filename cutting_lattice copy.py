@@ -1,9 +1,3 @@
-'''
-ISSUES:
-- I think the inflated points have the same z value as they did before inflation
-Not using z in computation of delaunay triangulation
-'''
-
 import pandas as pd
 from scipy.spatial import ConvexHull, Delaunay
 import matplotlib.pyplot as plt
@@ -19,8 +13,8 @@ def plot_delaunay_triangulation(points, title='Delaunay Triangulation'):
     """Plot the Delaunay triangulation of a set of points."""
     tri = Delaunay(points[:, :2])  # Use only x, y for computation
     plt.figure(figsize=(10, 10))
-    plt.triplot(points[:, 0], points[:, 1], tri.simplices)  
-    plt.plot(points[:, 0], points[:, 1], 'o') 
+    plt.triplot(points[:, 0], points[:, 1], tri.simplices)
+    plt.plot(points[:, 0], points[:, 1], 'o')
     plt.title(title)
     plt.show()
 
@@ -59,8 +53,9 @@ def inflate_convexhull(hull, points, inflation_distance=-1.5):
         # Move the vertex along the normal by a fixed distance in 2D
         inflated_vertices_2d[i] = points_2d[vertex] + vertex_normal * inflation_distance
 
-    # Combine inflated 2D vertices with original z values
-    inflated_vertices = np.hstack((inflated_vertices_2d, points[hull.vertices, 2][:, np.newaxis]))
+    # Set z value of inflated points to 0.3
+    inflated_vertices = np.column_stack((inflated_vertices_2d, np.full(len(inflated_vertices_2d), 0.3)))
+
     return inflated_vertices
 
 def main():
@@ -93,11 +88,25 @@ def main():
         plt.title(f'Inflated Convex Hull - {side}')
         plt.show()
 
-        # Add the inflated points to the original points
+        # Add the inflated points to the original points, ensuring inflated points have z=0
         inflated_points = np.concatenate((side_points, inflated_points), axis=0)
 
+        print(inflated_points)
+
         # Perform Delaunay Triangulation on the inflated points
-        plot_delaunay_triangulation(inflated_points, f'Delaunay Triangulation - Inflated {side}')
+        #plot_delaunay_triangulation(inflated_points, f'Delaunay Triangulation - Inflated {side}')
+        """Plot the Delaunay triangulation of a set of points."""
+        tri = Delaunay(inflated_points)
+        # plot in 3D
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot_trisurf(inflated_points[:, 0], inflated_points[:, 1], inflated_points[:, 2], triangles=tri.simplices, cmap='viridis', edgecolor='none')
+        ax.set_title(f'Delaunay Triangulation - Inflated {side}')
+        plt.show()
+
+
+
+
 
 if __name__ == '__main__':
     main()
