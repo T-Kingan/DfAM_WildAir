@@ -2,6 +2,7 @@ import pandas as pd
 from scipy.spatial import ConvexHull, Delaunay
 import matplotlib.pyplot as plt
 import numpy as np
+from stl import mesh
 
 def read_circle_centers(file_path):
     """Read circle centers from a CSV file into a pandas DataFrame."""
@@ -58,6 +59,24 @@ def inflate_convexhull(hull, points, inflation_distance=-1.5):
 
     return inflated_vertices
 
+def create_stl_from_delaunay(points, filename='output_mesh.stl'):
+    # Perform Delaunay triangulation on the points
+    tri = Delaunay(points[:, :2])  # Ensure this is 2D
+
+    # Create an empty mesh with the correct number of faces
+    output_mesh = mesh.Mesh(np.zeros(tri.simplices.shape[0], dtype=mesh.Mesh.dtype))
+
+    # Fill the mesh with the Delaunay triangles
+    for i, f in enumerate(tri.simplices):
+        for j in range(3):
+            output_mesh.vectors[i][j] = points[f[j], :]
+
+
+
+
+    # Write the mesh to an STL file
+    output_mesh.save(filename)
+
 def main():
     file_path = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\circle_centers.csv"
     points = read_circle_centers(file_path)
@@ -67,11 +86,13 @@ def main():
 
     # Divide the data into left and right sets based on x value, maintain z value
     left = points[points[:, 0] < 20]
+    #print("left", left)
     right = points[points[:, 0] > 20]
 
     # Delaunay Triangulation for left and right sets
-    plot_delaunay_triangulation(left, 'Delaunay Triangulation - Left Side')
-    plot_delaunay_triangulation(right, 'Delaunay Triangulation - Right Side')
+    # REDUNDANT? Adapt function to STL?
+    # plot_delaunay_triangulation(left, 'Delaunay Triangulation - Left Side')
+    # plot_delaunay_triangulation(right, 'Delaunay Triangulation - Right Side')
 
     # Convex Hull and Inflated Convex Hull for both sets
     for side, side_points in [('Left Side', left), ('Right Side', right)]:
@@ -91,19 +112,43 @@ def main():
         # Add the inflated points to the original points, ensuring inflated points have z=0
         inflated_points = np.concatenate((side_points, inflated_points), axis=0)
 
-        print(inflated_points)
+        print(inflated_points) # correct 3D points
 
-        # Perform Delaunay Triangulation on the inflated points
-        #plot_delaunay_triangulation(inflated_points, f'Delaunay Triangulation - Inflated {side}')
-        """Plot the Delaunay triangulation of a set of points."""
-        tri = Delaunay(inflated_points)
-        # plot in 3D
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.plot_trisurf(inflated_points[:, 0], inflated_points[:, 1], inflated_points[:, 2], triangles=tri.simplices, cmap='viridis', edgecolor='none')
-        ax.set_title(f'Delaunay Triangulation - Inflated {side}')
+        # Delaunay Triangulation for the inflated points in x and y
+        tri = Delaunay(inflated_points[:, :2])  # Ensure this is 2D # What is it?
+        
+        print("tri.simplices", tri.simplices)
+
+        # Plot the Delaunay triangulation of the inflated points
+        plt.figure(figsize=(10, 10))
+        plt.triplot(inflated_points[:, 0], inflated_points[:, 1], tri.simplices)
+        plt.plot(inflated_points[:, 0], inflated_points[:, 1], 'o')
+        plt.title(f'Delaunay Triangulation - Inflated {side}')
         plt.show()
 
+        # does delaunay in the function
+        create_stl_from_delaunay(inflated_points, f'delaunay_mesh_{side}.stl')
+        print("STL file created")
+
+
+
+
+
+
+        # # Perform Delaunay Triangulation on the inflated points
+        # #plot_delaunay_triangulation(inflated_points, f'Delaunay Triangulation - Inflated {side}')
+        # """Plot the Delaunay triangulation of a set of points."""
+        # tri = Delaunay(inflated_points)
+        # # plot in 3D
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # ax.plot_trisurf(inflated_points[:, 0], inflated_points[:, 1], inflated_points[:, 2], triangles=tri.simplices, cmap='viridis', edgecolor='none')
+        # ax.set_title(f'Delaunay Triangulation - Inflated {side}')
+        # plt.show()
+
+        
+        # print("Inflated Points:", inflated_points)
+        # create_stl_from_delaunay(inflated_points, 'delaunay_mesh.stl')
 
 
 
