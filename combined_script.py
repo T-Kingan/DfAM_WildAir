@@ -135,14 +135,6 @@ def check_overlap_numpy(new_circle, existing_circles):
     return np.any(overlaps)
 
 def add_additional_circles(inflated_points, side_points, additional_radius=0.3, grid_spacing=1):
-    """
-    Attempts to add more circles with a specified radius inside the boundary defined by inflated points.
-    Parameters:
-    - inflated_points: The boundary points.
-    - side_points: Existing circles.
-    - additional_radius: Radius of the additional circles to add.
-    - grid_spacing: The spacing between points in the grid used for checking potential circle centers.
-    """
     # Create a grid of points within the bounds of the inflated_points
     min_x, min_y = np.min(inflated_points[:, :2], axis=0)
     max_x, max_y = np.max(inflated_points[:, :2], axis=0)
@@ -154,20 +146,19 @@ def add_additional_circles(inflated_points, side_points, additional_radius=0.3, 
     # Initialize a list to collect new circles
     new_circles = []
 
-    # Check each grid point to see if it can be the center of a new circle without overlapping existing circles or boundary
+    # Combine existing and new circles to check for overlap
+    combined_circles = np.array(side_points)  # Start with existing circles
+
     for point in grid_points:
         new_circle = np.array([point[0], point[1], additional_radius, 0])  # Structure as an array to match side_points
-        if not check_overlap_numpy(new_circle, side_points) and is_inside_boundary(point, inflated_points):
+        
+        # Now check_overlap_numpy checks against both existing and so-far added new circles
+        if not check_overlap_numpy(new_circle, combined_circles) and is_inside_boundary(point, inflated_points):
             new_circles.append(new_circle)  # Collect new circles here
+            combined_circles = np.vstack([combined_circles, new_circle])  # Update the combined list
 
-    # If new circles were added, concatenate them with side_points
-    if new_circles:
-        # Convert new_circles to a numpy array with the same shape as side_points
-        new_circles_array = np.array(new_circles)
-        # Concatenate along the first axis (rows)
-        side_points = np.vstack((side_points, new_circles_array))
-
-    return side_points
+    #return combined_circles
+    return new_circles
 
 def is_inside_boundary(point, boundary_points):
     """
@@ -179,6 +170,26 @@ def is_inside_boundary(point, boundary_points):
     hull = ConvexHull(boundary_points)
     new_hull = Delaunay(boundary_points[hull.vertices])
     return new_hull.find_simplex(point) >= 0
+
+def interpolate_z_values(surface_points):
+    """
+    Creates an interpolation function for the z-values over the surface defined by the surface points.
+    
+    Parameters:
+    - surface_points: A numpy array of points on the cutting surface, with format [x, y, z].
+    
+    Returns:
+    - A function that takes x, y coordinates and returns the interpolated z-value.
+    """
+    # Separate x, y, and z coordinates
+    points = surface_points[:, :2]  # x, y coordinates
+    values = surface_points[:, 2]   # z coordinates
+    
+    # Create a griddata interpolator function
+    def interpolator(x, y):
+        return griddata(points, values, (x, y), method='linear')
+    
+    return interpolator
 
 if __name__ == '__main__':
     file_path = 'TK_footpressure.csv'
@@ -223,10 +234,12 @@ if __name__ == '__main__':
     for side, side_points in [('Left Side', left), ('Right Side', right)]:
         hull = ConvexHull(side_points[:, :2])  # Use only x, y for computation
         inflated_points = inflate_convexhull(hull, side_points) # create boundary points (radius = 0) # datatype: numpy.ndarray
+        
+        print("inflated_points", inflated_points)
         # side_points: datatype: numpy.ndarray
 
         # Add additional circles inside the boundary
-        new_circles = add_additional_circles(inflated_points, side_points, additional_radius=0.3, grid_spacing=0.1)
+        new_circles = add_additional_circles(inflated_points, side_points, additional_radius=0.2, grid_spacing=0.1)
 
         # plot additional circles
         fig, ax = plt.subplots()
@@ -244,8 +257,9 @@ if __name__ == '__main__':
 
         # Add the inflated points to the original points, ensuring inflated points have z=0
         #inflated_points = np.concatenate((side_points, inflated_points), axis=0) # Change to 0.3
-        cutting_surface_points = np.concatenate((side_points, inflated_points), axis=0) # Change to 0.3
+        cutting_surface_points = np.concatenate((side_points, inflated_points), axis=0)
 
+        print("cutting_surface_points", cutting_surface_points)
 
         # Delaunay Triangulation for the inflated points in x and y
         tri = Delaunay(cutting_surface_points[:, :2])  # Ensure this is 2D # What is it?
@@ -262,5 +276,16 @@ if __name__ == '__main__':
         # does delaunay in the function
         create_stl_from_delaunay(cutting_surface_points, f'delaunay_mesh_{side}.stl')
         print("STL file created")
+
+        # Interpolate z-values over the cutting surface
+        z_interpolator = interpolate_z_values(cutting_surface_points)
+
+        #for circle in new_circles:
+            # find the z value of the circle
+
+
+
+
+
 
 # new circles?
