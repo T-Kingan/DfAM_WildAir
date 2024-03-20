@@ -79,7 +79,7 @@ def create_stl_from_delaunay(points, filename='output_mesh.stl'):
 
 def main():
     file_path = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\circle_centers.csv"
-    points = read_circle_centers(file_path)
+    points = read_circle_centers(file_path) # datatype: numpy.ndarray
 
     # Delaunay Triangulation for all points
     plot_delaunay_triangulation(points)
@@ -116,7 +116,7 @@ def main():
 
         # Delaunay Triangulation for the inflated points in x and y
         tri = Delaunay(inflated_points[:, :2])  # Ensure this is 2D # What is it?
-        
+
         print("tri.simplices", tri.simplices)
 
         # Plot the Delaunay triangulation of the inflated points
