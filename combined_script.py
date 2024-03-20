@@ -9,6 +9,7 @@ from scipy.spatial import ConvexHull, Delaunay
 import matplotlib.pyplot as plt
 import numpy as np
 from stl import mesh
+from scipy.interpolate import griddata
 
 
 def load_and_process_data(file_path):
@@ -20,7 +21,7 @@ def load_and_process_data(file_path):
     foot_pressure = np.rot90(foot_pressure, 2)
     return foot_pressure
 
-def calculate_circle_centers(foot_pressure, spacing=8.382, min_circle_size=3, max_circle_size=15):
+def calculate_circle_centers(foot_pressure, spacing=8.382, min_circle_rad=3, max_circle_rad=16, central_plane_height=6 ):
     # Process the foot pressure data similarly to before
     fp_rows, fp_cols = foot_pressure.shape
     x = np.arange(0, fp_cols * spacing, spacing)
@@ -39,8 +40,8 @@ def calculate_circle_centers(foot_pressure, spacing=8.382, min_circle_size=3, ma
         i, j = index
         pressure = normalized_fp_2d[i, j]
         if pressure > 0:  # Ignore zero pressure values
-            radius = min_circle_size + (pressure * (max_circle_size - min_circle_size))
-            new_circle = {'x': x_fine[j], 'y': y_fine[i], 'radius': radius, 'z': 6}
+            radius = min_circle_rad + (pressure * (max_circle_rad - min_circle_rad))
+            new_circle = {'x': x_fine[j], 'y': y_fine[i], 'radius': radius, 'z': central_plane_height}
             if not check_overlap(new_circle, circles):
                 circles.append(new_circle)
     for circle in circles:
@@ -54,8 +55,7 @@ def check_overlap(new_circle, circles):   # check if the new circle overlaps wit
             return True
     return False
 
-
-def inflate_convexhull(hull, points, inflation_distance=-1.5):
+def inflate_convexhull(hull, points, inflation_distance=-1.5, boundary_z_values=0.3):
     """Inflate the convex hull by moving its vertices along the normals by a fixed distance."""
     # Points without z for computation, keep original for z values
     points_2d = points[:, :2]
@@ -83,8 +83,8 @@ def inflate_convexhull(hull, points, inflation_distance=-1.5):
     
     # set radius values of inflated points to 0
     inflated_vertices = np.column_stack((inflated_vertices_2d, np.full(len(inflated_vertices_2d), 0)))
-    # Set z value of inflated points to 0.3
-    inflated_vertices = np.column_stack((inflated_vertices, np.full(len(inflated_vertices), 0.3)))
+    # Set z value of inflated points to boundary_z_values (0.3 by default)
+    inflated_vertices = np.column_stack((inflated_vertices, np.full(len(inflated_vertices), boundary_z_values)))
 
     return inflated_vertices
 
@@ -134,7 +134,7 @@ def check_overlap_numpy(new_circle, existing_circles):
     # If any overlap, return True
     return np.any(overlaps)
 
-def add_additional_circles(inflated_points, side_points, additional_radius=0.3, grid_spacing=1):
+def add_additional_circles(inflated_points, side_points, additional_radius=0.3, grid_spacing=1, new_circle_z=0.3):
     # Create a grid of points within the bounds of the inflated_points
     min_x, min_y = np.min(inflated_points[:, :2], axis=0)
     max_x, max_y = np.max(inflated_points[:, :2], axis=0)
@@ -150,7 +150,7 @@ def add_additional_circles(inflated_points, side_points, additional_radius=0.3, 
     combined_circles = np.array(side_points)  # Start with existing circles
 
     for point in grid_points:
-        new_circle = np.array([point[0], point[1], additional_radius, 0])  # Structure as an array to match side_points
+        new_circle = np.array([point[0], point[1], additional_radius, new_circle_z])  # Structure as an array to match side_points
         
         # Now check_overlap_numpy checks against both existing and so-far added new circles
         if not check_overlap_numpy(new_circle, combined_circles) and is_inside_boundary(point, inflated_points):
@@ -183,7 +183,7 @@ def interpolate_z_values(surface_points):
     """
     # Separate x, y, and z coordinates
     points = surface_points[:, :2]  # x, y coordinates
-    values = surface_points[:, 2]   # z coordinates
+    values = surface_points[:, 3]   # z coordinates
     
     # Create a griddata interpolator function
     def interpolator(x, y):
@@ -192,33 +192,22 @@ def interpolate_z_values(surface_points):
     return interpolator
 
 if __name__ == '__main__':
+    
+    # parameters
+    central_plane_height = 6 # 6mm
+    boundary_z_values = central_plane_height / 10 # 0.6mm
+    new_circle_z = (central_plane_height/10) - 0.2 # 0.4mm
+
     file_path = 'TK_footpressure.csv'
     foot_pressure = load_and_process_data(file_path)
-    circles = calculate_circle_centers(foot_pressure) # datatype: list of dictionaries
+    circles = calculate_circle_centers(foot_pressure, central_plane_height=central_plane_height) # datatype: list of dictionaries
     print("Circle centers:", circles)
 
-    # # plot the circles
-    # import matplotlib.pyplot as plt
-    # fig, ax = plt.subplots()
-    # for circle in circles:
-    #     ax.add_patch(plt.Circle((circle['x'], circle['y']), circle['radius'], color='r', fill=False))
-    # ax.set_xlim(0, 450)
-    # ax.set_ylim(0, 450)
-    # plt.gca().set_aspect('equal', adjustable='box')
-    # plt.show()
-
-
-    # out circles to csv
     df = pd.DataFrame(circles) # datatype: pandas dataframe
-    # divide all values by 10 to convert to cm
-    df = df / 10
-    # round all to 2 decimal places
-    df = df.round(2)
-    # print the df
+    df = df / 10  # divide all values by 10 to convert to cm
+    df = df.round(2)    # round all to 2 decimal places
     print(df)
-
-    # save to csv
-    df.to_csv("circle_centers.csv", index=False)
+    df.to_csv("circle_centers.csv", index=False)    # save to csv
     print("Padding circle centers saved to circle_centers.csv")
 
     # convert df to numpy.ndarray
@@ -226,20 +215,23 @@ if __name__ == '__main__':
     print("Circle centers as numpy.ndarray:", circle_points)
 
     # Divide the circle points into left and right sets based on x value, maintain z value
+
+    # ---- FIX THIS ---- (20 was done by eye)
     left = circle_points[circle_points[:, 0] < 20]
-    #print("left", left)
     right = circle_points[circle_points[:, 0] > 20]
+
+    combined_points = []
 
     # Convex Hull, Inflated points and cutting surface points for left and right sides
     for side, side_points in [('Left Side', left), ('Right Side', right)]:
         hull = ConvexHull(side_points[:, :2])  # Use only x, y for computation
-        inflated_points = inflate_convexhull(hull, side_points) # create boundary points (radius = 0) # datatype: numpy.ndarray
+        inflated_points = inflate_convexhull(hull, side_points, boundary_z_values=boundary_z_values) # create boundary points (radius = 0) # datatype: numpy.ndarray
         
         print("inflated_points", inflated_points)
         # side_points: datatype: numpy.ndarray
 
         # Add additional circles inside the boundary
-        new_circles = add_additional_circles(inflated_points, side_points, additional_radius=0.2, grid_spacing=0.1)
+        new_circles = add_additional_circles(inflated_points, side_points, additional_radius=0.2, grid_spacing=0.1, new_circle_z=new_circle_z) # datatype: numpy.ndarray
 
         # plot additional circles
         fig, ax = plt.subplots()
@@ -279,10 +271,61 @@ if __name__ == '__main__':
 
         # Interpolate z-values over the cutting surface
         z_interpolator = interpolate_z_values(cutting_surface_points)
+        
+        #plot the interpolated surface
+        x = np.linspace(0, 50, 100)
+        y = np.linspace(0, 50, 100)
+        X, Y = np.meshgrid(x, y)
+        Z = z_interpolator(X, Y)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot_surface(X, Y, Z, cmap='viridis')
+        ax.set_title(f'Interpolated Surface - {side}')
+        plt.show()
 
-        #for circle in new_circles:
-            # find the z value of the circle
+        # Initialize an empty list to hold the indices of circles to remove
+        indices_to_remove = []
 
+        new_circles = np.array(new_circles)
+        # Create a boolean array initially filled with True, the same length as new_circles
+        keep_circle = np.ones(len(new_circles), dtype=bool)
+        print("filtering circles...")
+        for i, circle in enumerate(new_circles):
+            surface_height = z_interpolator(circle[0], circle[1])
+            #print(f"surface point at ({circle[0]}, {circle[1]}) has z height: {surface_height}")
+            if surface_height < (circle[3] - (circle[3]/2)): # surface z value is below the circle height - helf of the radius 
+                #print(f"Circle at ({circle[0]}, {circle[1]}) is too high: {surface_height} < {(circle[3] - (circle[3]/2))}")
+                # Mark this circle as False, indicating it should not be kept
+                keep_circle[i] = False
+
+        # Filter new_circles based on the boolean mask
+        new_circles_filtered = new_circles[keep_circle]
+
+
+        
+
+        # plot additional circles
+        fig, ax = plt.subplots()
+        # for circle in side_points:
+        #     ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='r', fill=False))
+        # for circle in inflated_points:
+        #     ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='b', fill=False))
+        for circle in new_circles_filtered:
+            ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='g', fill=False))
+        ax.set_xlim(0, 50)
+        ax.set_ylim(0, 50)
+        plt.gca().set_aspect('equal', adjustable='box')
+        plt.show()
+
+        # add new_circles_filtered to combined_points
+        combined_points.extend(new_circles_filtered)
+        combined_points.extend(side_points)
+
+      
+    # save combined_points to csv
+    df_combined = pd.DataFrame(combined_points)
+    df_combined.to_csv("combined_points.csv", index=False)
+      
 
 
 
