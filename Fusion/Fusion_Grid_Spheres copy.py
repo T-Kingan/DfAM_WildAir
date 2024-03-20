@@ -26,6 +26,13 @@ def run(context):
         #r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\circle_centers.csv"
         file_path = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\combined_points.csv"
 
+        # Define paths to your STL files
+        stl_file_path_right = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\delaunay_mesh_Right Side.stl"
+        stl_file_path_left = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\delaunay_mesh_Left Side.stl"
+
+        # Import the STL files
+        importSTLFile(rootComp, stl_file_path_right)
+        importSTLFile(rootComp, stl_file_path_left)
 
         # Read circle centers from the CSV file
         circle_centers = []

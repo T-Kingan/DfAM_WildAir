@@ -1,15 +1,10 @@
 
 import numpy as np
 import pandas as pd
-from scipy.interpolate import RegularGridInterpolator
-from scipy.spatial.distance import cdist
-
-import pandas as pd
 from scipy.spatial import ConvexHull, Delaunay
+from scipy.interpolate import RegularGridInterpolator, griddata
 import matplotlib.pyplot as plt
-import numpy as np
 from stl import mesh
-from scipy.interpolate import griddata
 
 
 def load_and_process_data(file_path):
@@ -234,17 +229,17 @@ if __name__ == '__main__':
         new_circles = add_additional_circles(inflated_points, side_points, additional_radius=0.2, grid_spacing=0.1, new_circle_z=new_circle_z) # datatype: numpy.ndarray
 
         # plot additional circles
-        fig, ax = plt.subplots()
-        for circle in side_points:
-            ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='r', fill=False))
-        for circle in inflated_points:
-            ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='b', fill=False))
-        for circle in new_circles:
-            ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='g', fill=False))
-        ax.set_xlim(0, 50)
-        ax.set_ylim(0, 50)
-        plt.gca().set_aspect('equal', adjustable='box')
-        plt.show()
+        # fig, ax = plt.subplots()
+        # for circle in side_points:
+        #     ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='r', fill=False))
+        # for circle in inflated_points:
+        #     ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='b', fill=False))
+        # for circle in new_circles:
+        #     ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='g', fill=False))
+        # ax.set_xlim(0, 50)
+        # ax.set_ylim(0, 50)
+        # plt.gca().set_aspect('equal', adjustable='box')
+        # plt.show()
 
 
         # Add the inflated points to the original points, ensuring inflated points have z=0
@@ -259,11 +254,11 @@ if __name__ == '__main__':
         print("tri.simplices", tri.simplices)
 
         # Plot the Delaunay triangulation of the inflated points
-        plt.figure(figsize=(10, 10))
-        plt.triplot(cutting_surface_points[:, 0], cutting_surface_points[:, 1], tri.simplices)
-        plt.plot(cutting_surface_points[:, 0], cutting_surface_points[:, 1], 'o')
-        plt.title(f'Delaunay Triangulation - Inflated {side}')
-        plt.show()
+        # plt.figure(figsize=(10, 10))
+        # plt.triplot(cutting_surface_points[:, 0], cutting_surface_points[:, 1], tri.simplices)
+        # plt.plot(cutting_surface_points[:, 0], cutting_surface_points[:, 1], 'o')
+        # plt.title(f'Delaunay Triangulation - Inflated {side}')
+        # plt.show()
 
         # does delaunay in the function
         create_stl_from_delaunay(cutting_surface_points, f'delaunay_mesh_{side}.stl')
@@ -272,16 +267,16 @@ if __name__ == '__main__':
         # Interpolate z-values over the cutting surface
         z_interpolator = interpolate_z_values(cutting_surface_points)
         
-        #plot the interpolated surface
-        x = np.linspace(0, 50, 100)
-        y = np.linspace(0, 50, 100)
-        X, Y = np.meshgrid(x, y)
-        Z = z_interpolator(X, Y)
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.plot_surface(X, Y, Z, cmap='viridis')
-        ax.set_title(f'Interpolated Surface - {side}')
-        plt.show()
+        # plot the interpolated surface
+        # x = np.linspace(0, 50, 100)
+        # y = np.linspace(0, 50, 100)
+        # X, Y = np.meshgrid(x, y)
+        # Z = z_interpolator(X, Y)
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # ax.plot_surface(X, Y, Z, cmap='viridis')
+        # ax.set_title(f'Interpolated Surface - {side}')
+        # plt.show()
 
         # Initialize an empty list to hold the indices of circles to remove
         indices_to_remove = []
@@ -304,19 +299,46 @@ if __name__ == '__main__':
 
         
 
-        # plot additional circles
-        fig, ax = plt.subplots()
-        # for circle in side_points:
-        #     ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='r', fill=False))
-        # for circle in inflated_points:
-        #     ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='b', fill=False))
-        for circle in new_circles_filtered:
-            ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='g', fill=False))
-        ax.set_xlim(0, 50)
-        ax.set_ylim(0, 50)
-        plt.gca().set_aspect('equal', adjustable='box')
-        plt.show()
+        # # plot additional circles
+        # fig, ax = plt.subplots()
+        # # for circle in side_points:
+        # #     ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='r', fill=False))
+        # # for circle in inflated_points:
+        # #     ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='b', fill=False))
+        # for circle in new_circles_filtered:
+        #     ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='g', fill=False))
+        # ax.set_xlim(0, 50)
+        # ax.set_ylim(0, 50)
+        # plt.gca().set_aspect('equal', adjustable='box')
+        # plt.show()
 
+        # Info about each flip flop
+        # find the x and y values of the point with the lowest z value
+        min_z_point = side_points[np.argmin(side_points[:, 3])]
+        max_y = max([point[1] for point in side_points])
+        min_y = min([point[1] for point in side_points])
+        greatest_distance = max_y - min_y
+        #print the info
+        print(f"Min Z Point: {min_z_point}")
+        print(f"Max Y: {max_y}")
+        print(f"Min Y: {min_y}")
+        print(f"Greatest Distance: {greatest_distance}")
+
+
+        # Assuming min_z_point is an array or list of length 4
+        flip_flop_side_info = {
+            'min_z_x': min_z_point[0], 
+            'min_z_y': min_z_point[1], 
+            'min_z_radius': min_z_point[2],  # Assuming this is the structure of min_z_point
+            'min_z_z': min_z_point[3], 
+            'max_y': max_y, 
+            'min_y': min_y, 
+            'greatest_distance': greatest_distance
+        }
+
+        df_flip_flop_side_info = pd.DataFrame([flip_flop_side_info])  # List of one dictionary to ensure DataFrame structure
+        df_flip_flop_side_info.to_csv(f'{side}_info.csv', index=False)
+        
         # add new_circles_filtered to combined_points
         combined_points.extend(new_circles_filtered)
         combined_points.extend(side_points)
