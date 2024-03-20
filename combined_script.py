@@ -54,6 +54,7 @@ def check_overlap(new_circle, circles):   # check if the new circle overlaps wit
             return True
     return False
 
+
 def inflate_convexhull(hull, points, inflation_distance=-1.5):
     """Inflate the convex hull by moving its vertices along the normals by a fixed distance."""
     # Points without z for computation, keep original for z values
@@ -107,12 +108,38 @@ def create_stl_from_delaunay(points, filename='output_mesh.stl'):
     # Save the mesh to an STL file
     output_mesh.save(filename)
 
-def add_additional_circles(inflated_points, circles, additional_radius=0.3, grid_spacing=1, height=0.3):
+def check_overlap_numpy(new_circle, existing_circles):
+    """
+    Checks if a new circle overlaps with any of the existing circles.
+    
+    Parameters:
+    - new_circle: A numpy array representing the new circle to check, with format [x, y, radius, z].
+    - existing_circles: A numpy array of existing circles, each with format [x, y, radius, z].
+    
+    Returns:
+    - True if there is an overlap with any existing circle, False otherwise.
+    """
+    # Extract x, y coordinates and radii from new_circle and existing_circles
+    new_x, new_y, new_radius, _ = new_circle
+    existing_xs = existing_circles[:, 0]
+    existing_ys = existing_circles[:, 1]
+    existing_radii = existing_circles[:, 2]
+    
+    # Calculate the distance between the new circle and all existing circles
+    distances = np.sqrt((existing_xs - new_x)**2 + (existing_ys - new_y)**2)
+    
+    # Check for overlap: if the distance between centers is less than the sum of radii, circles overlap
+    overlaps = distances < (new_radius + existing_radii)
+    
+    # If any overlap, return True
+    return np.any(overlaps)
+
+def add_additional_circles(inflated_points, side_points, additional_radius=0.3, grid_spacing=1):
     """
     Attempts to add more circles with a specified radius inside the boundary defined by inflated points.
     Parameters:
     - inflated_points: The boundary points.
-    - circles: Existing circles.
+    - side_points: Existing circles.
     - additional_radius: Radius of the additional circles to add.
     - grid_spacing: The spacing between points in the grid used for checking potential circle centers.
     """
@@ -124,16 +151,31 @@ def add_additional_circles(inflated_points, circles, additional_radius=0.3, grid
     X, Y = np.meshgrid(x_grid, y_grid)
     grid_points = np.vstack([X.ravel(), Y.ravel()]).T
 
+    # Initialize a list to collect new circles
+    new_circles = []
+
     # Check each grid point to see if it can be the center of a new circle without overlapping existing circles or boundary
     for point in grid_points:
-        new_circle = {'x': point[0], 'y': point[1], 'radius': additional_radius, 'z': height}
-        if not check_overlap(new_circle, circles) and is_inside_boundary(point, inflated_points):
-            circles.append(new_circle)
+        new_circle = np.array([point[0], point[1], additional_radius, 0])  # Structure as an array to match side_points
+        if not check_overlap_numpy(new_circle, side_points) and is_inside_boundary(point, inflated_points):
+            new_circles.append(new_circle)  # Collect new circles here
+
+    # If new circles were added, concatenate them with side_points
+    if new_circles:
+        # Convert new_circles to a numpy array with the same shape as side_points
+        new_circles_array = np.array(new_circles)
+        # Concatenate along the first axis (rows)
+        side_points = np.vstack((side_points, new_circles_array))
+
+    return side_points
 
 def is_inside_boundary(point, boundary_points):
     """
-    Checks if a point is inside the boundary defined by the given points.
+    Checks if a point is inside the boundary defined by the given points. (using x & y only)
     """
+    # only x and y coordinates are used
+    point = point[:2]
+    boundary_points = boundary_points[:, :2]
     hull = ConvexHull(boundary_points)
     new_hull = Delaunay(boundary_points[hull.vertices])
     return new_hull.find_simplex(point) >= 0
@@ -180,16 +222,20 @@ if __name__ == '__main__':
     # Convex Hull, Inflated points and cutting surface points for left and right sides
     for side, side_points in [('Left Side', left), ('Right Side', right)]:
         hull = ConvexHull(side_points[:, :2])  # Use only x, y for computation
-        inflated_points = inflate_convexhull(hull, side_points) # create boundary points (radius = 0)
+        inflated_points = inflate_convexhull(hull, side_points) # create boundary points (radius = 0) # datatype: numpy.ndarray
+        # side_points: datatype: numpy.ndarray
 
         # Add additional circles inside the boundary
-        add_additional_circles(inflated_points, side_points, additional_radius=0.3, grid_spacing=1)
+        new_circles = add_additional_circles(inflated_points, side_points, additional_radius=0.3, grid_spacing=0.1)
+
         # plot additional circles
         fig, ax = plt.subplots()
         for circle in side_points:
             ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='r', fill=False))
         for circle in inflated_points:
             ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='b', fill=False))
+        for circle in new_circles:
+            ax.add_patch(plt.Circle((circle[0], circle[1]), circle[2], color='g', fill=False))
         ax.set_xlim(0, 50)
         ax.set_ylim(0, 50)
         plt.gca().set_aspect('equal', adjustable='box')
