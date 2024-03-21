@@ -26,13 +26,13 @@ def run(context):
         #r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\circle_centers.csv"
         file_path = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\combined_points.csv"
 
-        # Define paths to your STL files
-        stl_file_path_right = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\delaunay_mesh_Right Side.stl"
-        stl_file_path_left = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\delaunay_mesh_Left Side.stl"
+        # # Define paths to your STL files
+        # stl_file_path_right = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\delaunay_mesh_Right Side.stl"
+        # stl_file_path_left = r"C:\Users\thoma\OneDrive - Imperial College London\Des Eng Y4\DfAM\CW2_FlipFlop\DfAM_FlipFlop\delaunay_mesh_Left Side.stl"
 
-        # Import the STL files
-        importSTLFile(rootComp, stl_file_path_right)
-        importSTLFile(rootComp, stl_file_path_left)
+        # # Import the STL files
+        # importSTLFile(rootComp, stl_file_path_right)
+        # importSTLFile(rootComp, stl_file_path_left)
 
         # Read circle centers from the CSV file
         circle_centers = []
@@ -46,8 +46,13 @@ def run(context):
                 circle_centers.append(circle)
         print("Circle centers:", circle_centers)
         # Create a hemisphere at each point in circle_centers
-        for circle in circle_centers:
-            createHemisphere(rootComp, circle['x'], circle['y'], circle['z'], circle['radius'])
+        for index, circle in enumerate(circle_centers):
+            if circle['x'] < 20:
+                hemisphereName = f"Hemisphere_L_{index+1}"  # Generating a name based on the index
+            else:
+                hemisphereName = f"Hemisphere_R_{index+1}"
+            createHemisphere(rootComp, circle['x'], circle['y'], circle['z'], circle['radius'], hemisphereName)
+
 
         # At the end of the `run` function to indicate completion
         ui.messageBox('Script execution completed successfully!')
@@ -56,7 +61,7 @@ def run(context):
         if ui:
             ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
-def createHemisphere(rootComp, x, y, z, radius):
+def createHemisphere(rootComp, x, y, z, radius, name):
     # Access the features collection of the root component
     features = rootComp.features
 
@@ -82,6 +87,11 @@ def createHemisphere(rootComp, x, y, z, radius):
     revolveInput.setAngleExtent(False, angle)
     revolveInput.isSolid = True
     revolves.add(revolveInput)
+
+    # Correctly access the last created body to assign a name
+    # Assumes the last created body is the result of the revolve feature just added
+    body = rootComp.bRepBodies.item(rootComp.bRepBodies.count - 1)
+    body.name = name
 
 def stop(context):
     ui = None

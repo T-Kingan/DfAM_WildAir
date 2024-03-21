@@ -38,7 +38,7 @@ def run(context):
                 circle = {'x': float(row[0]), 'y': float(row[1]), 'radius': float(row[2]), 'z': float(row[3]), }
                 circle_centers.append(circle)
 
-        # find the lowest z value
+        # find the lowest z value and radius value of that circle
         extrude_z = min([circle['z'] for circle in circle_centers])
         #find the max z value
         max_z = max([circle['z'] for circle in circle_centers])
@@ -46,8 +46,12 @@ def run(context):
         #plane_z = min_z - 1
 
         # create a cylinder at each point in circle_centers
-        for circle in circle_centers:
-            createCylinder(rootComp, circle['x'], circle['y'], circle['z'], circle['radius'], extrude_z, max_z)
+        for index, circle in enumerate(circle_centers):
+            if circle['x'] < 20:
+                columnName = f"Column_L_{index+1}"  # Generating a name based on the index
+            else:
+                columnName = f"Column_R_{index+1}"
+            createCylinder(rootComp, circle['x'], circle['y'], circle['z'], circle['radius'], extrude_z, max_z, columnName)
                            
         
         print("Circle centers:", circle_centers)
@@ -62,34 +66,8 @@ def run(context):
         if ui:
             ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
-# def createHemisphere(rootComp, x, y, z, radius):
-#     # Access the features collection of the root component
-#     features = rootComp.features
 
-#     # Create a new sketch on the xy plane
-#     sketches = rootComp.sketches
-#     xyPlane = rootComp.xYConstructionPlane
-#     sketch = sketches.add(xyPlane)
-
-#     # Draw a circle in the sketch
-#     circles = sketch.sketchCurves.sketchCircles
-#     centerPoint = adsk.core.Point3D.create(x, y, z)
-#     circle = circles.addByCenterRadius(centerPoint, radius)
-
-#     # Draw a center line for the revolution
-#     lines = sketch.sketchCurves.sketchLines
-#     axis = lines.addByTwoPoints(adsk.core.Point3D.create(x, y - radius, z), adsk.core.Point3D.create(x, y + radius, z))
-
-#     # Revolve the half circle to create a hemisphere
-#     prof = sketch.profiles.item(0)
-#     revolves = features.revolveFeatures
-#     revolveInput = revolves.createInput(prof, axis, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-#     angle = adsk.core.ValueInput.createByString("360 deg")  # Revolve angle
-#     revolveInput.setAngleExtent(False, angle)
-#     revolveInput.isSolid = True
-#     revolves.add(revolveInput)
-
-def createCylinder(rootComp, x, y, z, radius, extrude_z, max_z):
+def createCylinder(rootComp, x, y, z, radius, extrude_z, max_z, name):
     # Access the features collection of the root component
     features = rootComp.features
 
@@ -98,27 +76,33 @@ def createCylinder(rootComp, x, y, z, radius, extrude_z, max_z):
     xyPlane = rootComp.xYConstructionPlane
     sketch = sketches.add(xyPlane)
 
+    plane = max_z+0.2
+    depth = extrude_z - max_z - 1 
+
     # Draw a circle in the sketch
     circles = sketch.sketchCurves.sketchCircles
-    centerPoint = adsk.core.Point3D.create(x, y, extrude_z)
+    centerPoint = adsk.core.Point3D.create(x, y, plane)
     circle = circles.addByCenterRadius(centerPoint, radius)
 
-    # extrude the circle two sides, side 1 to min_z and side 2 to max_z
+    # extrude the circle two sides
     prof = sketch.profiles.item(0)
     extrudes = features.extrudeFeatures
     extrudeInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-    distance = adsk.core.ValueInput.createByString(str(max_z-extrude_z) + " cm")
+    distance = adsk.core.ValueInput.createByString(str(depth) + " cm")
     extrudeInput.setDistanceExtent(False, distance)
     extrudes.add(extrudeInput)
 
-    prof = sketch.profiles.item(0)
-    extrudes = features.extrudeFeatures
-    extrudeInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-    distance = adsk.core.ValueInput.createByString(str(-1) + " cm")
-    extrudeInput.setDistanceExtent(False, distance)
-    extrudes.add(extrudeInput)
+    # prof = sketch.profiles.item(0)
+    # extrudes = features.extrudeFeatures
+    # extrudeInput = extrudes.createInput(prof, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+    # distance = adsk.core.ValueInput.createByString(str(-1) + " cm")
+    # extrudeInput.setDistanceExtent(False, distance)
+    # extrudes.add(extrudeInput)
     
-    
+    # Correctly access the last created body to assign a name
+    # Assumes the last created body is the result of the revolve feature just added
+    body = rootComp.bRepBodies.item(rootComp.bRepBodies.count - 1)
+    body.name = name
 
 
 def stop(context):
