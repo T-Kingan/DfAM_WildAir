@@ -1,4 +1,4 @@
-# Fusion_Grid_HemiSpheres.py
+# Fusion_2_large_sphere.py
 '''
 This script reads the circle centers from a CSV file,
 Creates spheres at each circle center in Fusion 360.

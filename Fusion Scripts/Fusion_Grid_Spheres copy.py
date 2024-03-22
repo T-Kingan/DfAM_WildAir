@@ -1,4 +1,4 @@
-# Fusion_Grid_HemiSpheres.py
+# Fusion_Grid_Spheres copy.py
 '''
 This script reads the circle centers from a CSV file,
 Creates spheres at each circle center in Fusion 360.
@@ -79,7 +79,7 @@ def createHemisphere(rootComp, x, y, z, radius, name):
     lines = sketch.sketchCurves.sketchLines
     axis = lines.addByTwoPoints(adsk.core.Point3D.create(x, y - radius, z), adsk.core.Point3D.create(x, y + radius, z))
 
-    # Revolve the half circle to create a hemisphere
+    # Revolve the half circle to create a sphere
     prof = sketch.profiles.item(0)
     revolves = features.revolveFeatures
     revolveInput = revolves.createInput(prof, axis, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
